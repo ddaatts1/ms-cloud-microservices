@@ -1,0 +1,45 @@
+name: Build and Deploy Microservices
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        run: az acr login --name microregistry74321
+
+      # ---------- PRODUCT SERVICE ----------
+
+      - name: Build product-service image
+        run: docker build -t microregistry74321.azurecr.io/product-service:latest ./product-service
+
+      - name: Push product-service image
+        run: docker push microregistry74321.azurecr.io/product-service:latest
+
+      - name: Deploy product-service
+        run: az containerapp update --name product-service --resource-group micro-rg --image microregistry74321.azurecr.io/product-service:latest
+
+      # ---------- ORDER SERVICE ----------
+
+      - name: Build order-service image
+        run: docker build -t microregistry74321.azurecr.io/order-service:latest ./order-service
+
+      - name: Push order-service image
+        run: docker push microregistry74321.azurecr.io/order-service:latest
+
+      - name: Deploy order-service
+        run: az containerapp update --name order-service --resource-group micro-rg --image microregistry74321.azurecr.io/order-service:latest
