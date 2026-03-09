@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: 123456
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - micro_net
+
+  product-service:
+    build: ./product-service
+    container_name: product-service
+    depends_on:
+      - postgres
+    networks:
+      - micro_net
+
+  order-service:
+    build: ./order-service
+    container_name: order-service
+    depends_on:
+      - postgres
+    networks:
+      - micro_net
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - product-service
+      - order-service
+    networks:
+      - micro_net
+
+volumes:
+  postgres_data:
+
+networks:
+  micro_net:
+    driver: bridge
