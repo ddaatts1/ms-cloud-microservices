@@ -1,9 +1,12 @@
-name: Build and Deploy Microservices
+name: CI/CD Microservices
 
 on:
   push:
     branches:
       - main
+
+env:
+  REGISTRY: microregistry74321.azurecr.io
 
 jobs:
   deploy:
@@ -14,7 +17,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Login to Azure
+      - name: Login Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -22,24 +25,40 @@ jobs:
       - name: Login to ACR
         run: az acr login --name microregistry74321
 
+      - name: Get commit SHA
+        id: vars
+        run: echo "TAG=${GITHUB_SHA}" >> $GITHUB_ENV
+
       # ---------- PRODUCT SERVICE ----------
 
-      - name: Build product-service image
-        run: docker build -t microregistry74321.azurecr.io/product-service:latest ./product-service
+      - name: Build product-service
+        run: |
+          docker build -t $REGISTRY/product-service:$TAG ./product-service
 
-      - name: Push product-service image
-        run: docker push microregistry74321.azurecr.io/product-service:latest
+      - name: Push product-service
+        run: |
+          docker push $REGISTRY/product-service:$TAG
 
       - name: Deploy product-service
-        run: az containerapp update --name product-service --resource-group micro-rg --image microregistry74321.azurecr.io/product-service:latest
+        run: |
+          az containerapp update \
+          --name product-service \
+          --resource-group micro-rg \
+          --image $REGISTRY/product-service:$TAG
 
       # ---------- ORDER SERVICE ----------
 
-      - name: Build order-service image
-        run: docker build -t microregistry74321.azurecr.io/order-service:latest ./order-service
+      - name: Build order-service
+        run: |
+          docker build -t $REGISTRY/order-service:$TAG ./order-service
 
-      - name: Push order-service image
-        run: docker push microregistry74321.azurecr.io/order-service:latest
+      - name: Push order-service
+        run: |
+          docker push $REGISTRY/order-service:$TAG
 
       - name: Deploy order-service
-        run: az containerapp update --name order-service --resource-group micro-rg --image microregistry74321.azurecr.io/order-service:latest
+        run: |
+          az containerapp update \
+          --name order-service \
+          --resource-group micro-rg \
+          --image $REGISTRY/order-service:$TAG
